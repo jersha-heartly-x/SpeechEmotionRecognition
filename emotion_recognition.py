@@ -6,13 +6,12 @@ from data_extractor import load_data
 from sklearn.model_selection import GridSearchCV
 from utils import extract_feature, get_best_estimators, AVAILABLE_EMOTIONS
 from create_csv import write_emodb_csv, write_tess_ravdess_csv, write_custom_csv
-from sklearn.metrics import accuracy_score, make_scorer, mean_absolute_error, mean_squared_error
+from sklearn.metrics import accuracy_score, make_scorer
 
 
 class EmotionRecognizer:
     def __init__(self, model=None, **kwargs):
         self.emotions = kwargs.get("emotions", ["sad", "neutral", "happy"])
-        
         self._verify_emotions()
 
         self.features = kwargs.get("features", ["mfcc", "chroma", "mel"])
@@ -25,9 +24,7 @@ class EmotionRecognizer:
         if not self.tess_ravdess and not self.emodb and not self.custom_db:
             self.tess_ravdess = True
 
-        self.classification = kwargs.get("classification", True)
         self.balance = kwargs.get("balance", True)
-        self.override_csv = kwargs.get("override_csv", True)
         self.verbose = kwargs.get("verbose", 1)
 
         self.tess_ravdess_name = kwargs.get("tess_ravdess_name", "tess_ravdess.csv")
@@ -53,11 +50,11 @@ class EmotionRecognizer:
             assert emotion in AVAILABLE_EMOTIONS, "Emotion not recognized."
     
     def get_best_estimators(self):
-        return get_best_estimators(self.classification)
+        return get_best_estimators()
 
     def load_data(self):
         if not self.data_loaded:
-            result = load_data(self.train_desc_files, self.test_desc_files, self.audio_config, self.classification,
+            result = load_data(self.train_desc_files, self.test_desc_files, self.audio_config,
                                 emotions=self.emotions, balance=self.balance)
             self.X_train = result['X_train']
             self.X_test = result['X_test']
@@ -87,9 +84,6 @@ class EmotionRecognizer:
 
     def write_csv(self):
         for train_csv_file, test_csv_file in zip(self.train_desc_files, self.test_desc_files):
-            if os.path.isfile(train_csv_file) and os.path.isfile(test_csv_file):
-                if not self.override_csv:
-                    continue
             if self.emodb_name in train_csv_file:
                 write_emodb_csv(self.emotions, train_name=train_csv_file, test_name=test_csv_file, verbose=self.verbose)
                 if self.verbose:
@@ -104,7 +98,7 @@ class EmotionRecognizer:
                     print("[+] Generated Custom DB CSV File")
 
     def grid_search(self, params, n_jobs=2, verbose=1):
-        score = accuracy_score if self.classification else mean_absolute_error
+        score = accuracy_score
         
         print("Grid Search starts!")
         # GridSearchCV - Exhaustive search over specified parameter values for an estimator.
@@ -130,7 +124,7 @@ class EmotionRecognizer:
                 estimators.set_description(f"Evaluating {estimator.__class__.__name__}")
             
             detector = EmotionRecognizer(estimator, emotions=self.emotions, tess_ravdess=self.tess_ravdess,
-                                        emodb=self.emodb, custom_db=self.custom_db, classification=self.classification,
+                                        emodb=self.emodb, custom_db=self.custom_db,
                                         features=self.features, balance=self.balance, override_csv=False)
             # data already loaded
             detector.X_train = self.X_train
@@ -144,18 +138,14 @@ class EmotionRecognizer:
             result.append((detector.model, accuracy))
 
         # sort the result
-        # regression: best is the lower, not the higher
         # classification: best is higher, not the lower
-        result = sorted(result, key=lambda item: item[1], reverse=self.classification)
+        result = sorted(result, key=lambda item: item[1], reverse=True)
         best_estimator = result[0][0]
         accuracy = result[0][1]
         self.model = best_estimator
         self.model_trained = True
         if self.verbose:
-            if self.classification:
-                print(f"[+] Best model determined: {self.model.__class__.__name__} with {accuracy*100:.3f}% test accuracy")
-            else:
-                print(f"[+] Best model determined: {self.model.__class__.__name__} with {accuracy:.5f} mean absolute error")
+            print(f"[+] Best model determined: {self.model.__class__.__name__} with {accuracy*100:.3f}% test accuracy")
 
     def train(self, verbose=1):
         if not self.data_loaded:
@@ -170,30 +160,10 @@ class EmotionRecognizer:
         feature = extract_feature(audio_path, **self.audio_config).reshape(1, -1)
         return self.model.predict(feature)[0]
     
-    def predict_proba(self, audio_path):
-        if self.classification:
-            feature = extract_feature(audio_path, **self.audio_config).reshape(1, -1)
-            proba = self.model.predict_proba(feature)[0]
-            result = {}
-            for emotion, prob in zip(self.model.classes_, proba):
-                result[emotion] = prob
-            return result
-        else:
-            raise NotImplementedError("Probability prediction doesn't make sense for regression")
-
-
     def test_score(self):
         y_pred = self.model.predict(self.X_test)
-        if self.classification:
-            return accuracy_score(y_true=self.y_test, y_pred=y_pred)
-        else:
-            return mean_squared_error(y_true=self.y_test, y_pred=y_pred)
-
+        return accuracy_score(y_true=self.y_test, y_pred=y_pred)
 
     def train_score(self):
-        y_pred = self.model.predict(self.X_train)
-        if self.classification:
-            return accuracy_score(y_true=self.y_train, y_pred=y_pred)
-        else:
-            return mean_squared_error(y_true=self.y_train, y_pred=y_pred)
-
+        y_pred = self.model.predict(self.X_train)    
+        return accuracy_score(y_true=self.y_train, y_pred=y_pred)

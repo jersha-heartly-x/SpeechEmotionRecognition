@@ -7,12 +7,11 @@ from collections import defaultdict
 from utils import get_label, get_first_letters, extract_feature
 
 class AudioExtractor:
-    def __init__(self, audio_config=None, verbose=1, features_folder_name="features", classification=True,
+    def __init__(self, audio_config=None, verbose=1, features_folder_name="features",
                     emotions=['sad', 'neutral', 'happy'], balance=True):
         self.audio_config = audio_config if audio_config else {'mfcc': True, 'chroma': True, 'mel': True, 'contrast': False, 'tonnetz': False}
         self.verbose = verbose
         self.features_folder_name = features_folder_name
-        self.classification = classification
         self.emotions = emotions
         self.balance = balance
         self.input_dimension = None
@@ -59,16 +58,6 @@ class AudioExtractor:
             print("[*] Loading audio file paths and its corresponding labels...")
         
         audio_paths, emotions = list(df['path']), list(df['emotion'])
-        
-        if not self.classification:
-            if len(self.emotions) == 3:
-                self.categories = {'sad': 1, 'neutral': 2, 'happy': 3}
-            elif len(self.emotions) == 5:
-                self.categories = {'angry': 1, 'sad': 2, 'neutral': 3, 'ps': 4, 'happy': 5}
-            else:
-                raise TypeError("Regression is only for either ['sad', 'neutral', 'happy'] or ['angry', 'sad', 'neutral', 'ps', 'happy']")
-            
-            emotions = [ self.categories[e] for e in emotions ]
         
         if not os.path.isdir(self.features_folder_name):
             os.mkdir(self.features_folder_name)
@@ -142,13 +131,10 @@ class AudioExtractor:
         
         count = []
         
-        if self.classification:
-            for emotion in self.emotions:
-                count.append(len([ e for e in emotions if e == emotion]))
-        else:
-            # regression, take actual numbers, not label emotion
-            for emotion in self.categories.values():
-                count.append(len([ e for e in emotions if e == emotion]))
+
+        for emotion in self.emotions:
+            count.append(len([ e for e in emotions if e == emotion]))
+
         # get the minimum data samples to balance to
         minimum = min(count)
         if minimum == 0:
@@ -160,10 +146,9 @@ class AudioExtractor:
             print("[*] Balancing the dataset to the minimum value:", minimum)
         
         d = defaultdict(list)
-        if self.classification:
-            counter = {e: 0 for e in self.emotions }
-        else:
-            counter = { e: 0 for e in self.categories.values() }
+        
+        counter = {e: 0 for e in self.emotions }
+
         for emotion, feature, audio_path in zip(emotions, features, audio_paths):
             if counter[emotion] >= minimum:
                 # minimum value exceeded
@@ -203,10 +188,10 @@ def shuffle_data(audio_paths, emotions, features):
     features = [features[i] for i in p]
     return audio_paths, emotions, features
 
-def load_data(train_desc_files, test_desc_files, audio_config=None, classification=True, shuffle=True,
+def load_data(train_desc_files, test_desc_files, audio_config=None, shuffle=True,
                 balance=True, emotions=['sad', 'neutral', 'happy']):
 
-    audiogen = AudioExtractor(audio_config=audio_config, classification=classification, emotions=emotions,
+    audiogen = AudioExtractor(audio_config=audio_config, emotions=emotions,
                                 balance=balance, verbose=0)
 
     audiogen.load_train_data(train_desc_files, shuffle=shuffle)

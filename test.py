@@ -108,7 +108,7 @@ def record_to_file(path):
     wf.close()
 
 if __name__ == "__main__":
-    estimators = get_best_estimators(True)
+    estimators = get_best_estimators()
     estimators_str, estimator_dict = get_estimators_name(estimators)
     
     print(estimators_str)

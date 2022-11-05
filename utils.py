@@ -13,7 +13,7 @@ AVAILABLE_EMOTIONS = {
     "angry",
     "fear",
     "disgust",
-    "ps", # pleasant surprised
+    "ps",
     "boredom"
 }
 
@@ -84,8 +84,5 @@ def get_audio_config(features_list):
         audio_config[feature] = True
     return audio_config
 
-def get_best_estimators(classification):
-    if classification:
-        return pickle.load(open("grid/best_classifiers.pickle", "rb"))
-    else:
-        return pickle.load(open("grid/best_regressors.pickle", "rb"))
+def get_best_estimators():
+    return pickle.load(open("grid/best_classifiers.pickle", "rb"))
