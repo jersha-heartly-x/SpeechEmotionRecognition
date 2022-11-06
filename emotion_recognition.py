@@ -1,5 +1,5 @@
-import os
 import tqdm
+
 
 from utils import get_audio_config
 from data_extractor import load_data
@@ -21,9 +21,6 @@ class EmotionRecognizer:
         self.emodb = kwargs.get("emodb", True)
         self.custom_db = kwargs.get("custom_db", True)
 
-        if not self.tess_ravdess and not self.emodb and not self.custom_db:
-            self.tess_ravdess = True
-
         self.balance = kwargs.get("balance", True)
         self.verbose = kwargs.get("verbose", 1)
 
@@ -42,6 +39,7 @@ class EmotionRecognizer:
 
         if not model:
             self.determine_best_model()
+            print("MODEL: ", self.model)
         else:
             self.model = model
 
@@ -125,7 +123,7 @@ class EmotionRecognizer:
             
             detector = EmotionRecognizer(estimator, emotions=self.emotions, tess_ravdess=self.tess_ravdess,
                                         emodb=self.emodb, custom_db=self.custom_db,
-                                        features=self.features, balance=self.balance, override_csv=False)
+                                        features=self.features, balance=self.balance)
             # data already loaded
             detector.X_train = self.X_train
             detector.X_test  = self.X_test
@@ -160,10 +158,13 @@ class EmotionRecognizer:
         feature = extract_feature(audio_path, **self.audio_config).reshape(1, -1)
         return self.model.predict(feature)[0]
     
+    def train_score(self):
+        y_pred = self.model.predict(self.X_train)    
+        return accuracy_score(y_true=self.y_train, y_pred=y_pred)
+
     def test_score(self):
         y_pred = self.model.predict(self.X_test)
         return accuracy_score(y_true=self.y_test, y_pred=y_pred)
 
-    def train_score(self):
-        y_pred = self.model.predict(self.X_train)    
-        return accuracy_score(y_true=self.y_train, y_pred=y_pred)
+
+    

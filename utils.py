@@ -7,14 +7,8 @@ from convert_wavs import convert_audio
 
 AVAILABLE_EMOTIONS = {
     "neutral",
-    "calm",
     "happy",
-    "sad",
-    "angry",
-    "fear",
-    "disgust",
-    "ps",
-    "boredom"
+    "sad"
 }
 
 def get_label(audio_config):
@@ -66,7 +60,7 @@ def extract_feature(file_name, **kwargs):
             chroma = np.mean(librosa.feature.chroma_stft(S=stft, sr=sample_rate).T,axis=0)
             result = np.hstack((result, chroma))
         if mel:
-            mel = np.mean(librosa.feature.melspectrogram(X, sr=sample_rate).T,axis=0)
+            mel = np.mean(librosa.feature.melspectrogram(y=X, sr=sample_rate).T,axis=0)
             result = np.hstack((result, mel))
         if contrast:
             contrast = np.mean(librosa.feature.spectral_contrast(S=stft, sr=sample_rate).T,axis=0)
@@ -74,15 +68,15 @@ def extract_feature(file_name, **kwargs):
         if tonnetz:
             tonnetz = np.mean(librosa.feature.tonnetz(y=librosa.effects.harmonic(X), sr=sample_rate).T,axis=0)
             result = np.hstack((result, tonnetz))
+            
     return result
 
 def get_audio_config(features_list):
     audio_config = {'mfcc': False, 'chroma': False, 'mel': False, 'contrast': False, 'tonnetz': False}
     for feature in features_list:
-        if feature not in audio_config:
-            raise TypeError(f"Feature passed: {feature} is not recognized.")
         audio_config[feature] = True
     return audio_config
 
 def get_best_estimators():
     return pickle.load(open("grid/best_classifiers.pickle", "rb"))
+

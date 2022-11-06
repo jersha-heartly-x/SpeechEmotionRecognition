@@ -1,11 +1,16 @@
 from utils import get_best_estimators
 from emotion_recognition import EmotionRecognizer
 
+from scipy.io import wavfile
+from audiomentations import Compose, AddGaussianNoise
+
 import pyaudio
 import wave
+import numpy as np
 from array import array
 from sys import byteorder
 from struct import pack
+
 
 THRESHOLD = 500
 CHUNK_SIZE = 1024
@@ -49,7 +54,6 @@ def trim(snd_data):
     return snd_data
 
 def add_silence(snd_data, seconds):
-    "Add silence to the start and end of 'snd_data' of length 'seconds' (float)"
     r = array('h', [0 for i in range(int(seconds*RATE))])
     r.extend(snd_data)
     r.extend([0 for i in range(int(seconds*RATE))])
@@ -62,8 +66,7 @@ def get_estimators_name(estimators):
 def record():
     p = pyaudio.PyAudio()
     stream = p.open(format=FORMAT, channels=1, rate=RATE,
-        input=True, output=True,
-        frames_per_buffer=CHUNK_SIZE)
+        input=True, output=True, frames_per_buffer=CHUNK_SIZE)
 
     num_silent = 0
     snd_started = False
@@ -94,36 +97,56 @@ def record():
     r = normalize(r)
     r = trim(r)
     r = add_silence(r, 0.5)
+
     return sample_width, r
 
-def record_to_file(path):
+def record_to_file(path, noise = False):
     sample_width, data = record()
-    data = pack('<' + ('h'*len(data)), *data)
+    
+    if(noise):
+        augmenter = Compose(
+            [AddGaussianNoise(min_amplitude=0.001, max_amplitude=0.015, p=1.0)]
+        )
 
-    wf = wave.open(path, 'wb')
-    wf.setnchannels(1)
-    wf.setsampwidth(sample_width)
-    wf.setframerate(RATE)
-    wf.writeframes(data)
-    wf.close()
+        for i in range(5):
+            data = np.array(data)
+            output_file_path = "gnoise.wav"
+            augmented_samples = augmenter(samples=data, sample_rate=RATE)
+            wavfile.write(output_file_path, rate=RATE, data=augmented_samples)
+
+    else:
+        data = pack('<' + ('h'*len(data)), *data)
+        wf = wave.open(path, 'wb')
+        wf.setnchannels(1)
+        wf.setsampwidth(sample_width)
+        wf.setframerate(RATE)
+        wf.writeframes(data)
+        wf.close()
 
 if __name__ == "__main__":
     estimators = get_best_estimators()
     estimators_str, estimator_dict = get_estimators_name(estimators)
     
-    print(estimators_str)
-    print(estimator_dict)
-
     features = ["mfcc", "chroma", "mel"]
 
-    detector = EmotionRecognizer(estimator_dict['MLPClassifier'], emotions=["sad", "neutral", "happy"], features=features, verbose=0)
+    detector = EmotionRecognizer(None, emotions=["sad", "neutral", "happy"], features=features, verbose=0)
     detector.train()
-
     print("Test accuracy score: {:.3f}%".format(detector.test_score()*100))
-    print("Please talk")
     
-    filename = "test.wav"
-    record_to_file(filename)
-    result = detector.predict(filename)
-    print(result)
+    print("Please talk...")
+    
+    # filename1 = "test.wav"
+    
+    # record_to_file(filename1)
+    # result = detector.predict(filename1)
+    # print("*** PREDICTION ***")
+    # print("You are", result)
+    # print('*'*18)
+    
+    filename2 = "gnoise.wav"
+    record_to_file(filename2, noise = True)
+    result = detector.predict(filename2)
+    print("*** PREDICTION ***")
+    print("You are", result)
+    print('*'*18)
 

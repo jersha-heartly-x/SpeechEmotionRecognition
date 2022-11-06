@@ -16,7 +16,7 @@ def write_emodb_csv(emotions=["sad", "neutral", "happy"], train_name="train_emo.
         "T": "sad",
         "N": "neutral"
     }
-    # delete not specified emotions
+
     categories_reversed = { v: k for k, v in categories.items() }
 
     for emotion, code in categories_reversed.items():
@@ -30,10 +30,10 @@ def write_emodb_csv(emotions=["sad", "neutral", "happy"], train_name="train_emo.
             continue
         target['emotion'].append(emotion)
         target['path'].append(file)
+    
     if verbose:
         print("[EMO-DB] Total files to write:", len(target['path']))
         
-    # dividing training/testing sets
     n_samples = len(target['path'])
     test_size = int((1-train_size) * n_samples)
     train_size = int(train_size * n_samples)
@@ -58,7 +58,6 @@ def write_tess_ravdess_csv(emotions=["sad", "neutral", "happy"], train_name="tra
     test_target = {"path": [], "emotion": []}
     
     for category in emotions:
-        # for training speech directory
         total_files = glob.glob(f"data/training/Actor_*/*_{category}.wav")
         for i, path in enumerate(total_files):
             train_target["path"].append(path)
@@ -67,7 +66,6 @@ def write_tess_ravdess_csv(emotions=["sad", "neutral", "happy"], train_name="tra
         if verbose and total_files:
             print(f"[TESS&RAVDESS] There are {len(total_files)} training audio files for category:{category}")
     
-        # for validation speech directory
         total_files = glob.glob(f"data/validation/Actor_*/*_{category}.wav")
         for i, path in enumerate(total_files):
             test_target["path"].append(path)
@@ -79,14 +77,13 @@ def write_tess_ravdess_csv(emotions=["sad", "neutral", "happy"], train_name="tra
     pd.DataFrame(train_target).to_csv(train_name)
 
 
-def write_custom_csv(emotions=['sad', 'neutral', 'happy'], train_name="train_custom.csv", test_name="test_custom.csv",
-                    verbose=1):
+def write_custom_csv(emotions=['sad', 'neutral', 'happy'], train_name="train_custom.csv", 
+                        test_name="test_custom.csv", verbose=1):
 
     train_target = {"path": [], "emotion": []}
     test_target = {"path": [], "emotion": []}
     
     for category in emotions:
-        # train data
         for i, file in enumerate(glob.glob(f"data/train-custom/*_{category}.wav")):
             train_target["path"].append(file)
             train_target["emotion"].append(category)
@@ -94,10 +91,8 @@ def write_custom_csv(emotions=['sad', 'neutral', 'happy'], train_name="train_cus
             try:
                 print(f"[Custom Dataset] There are {i} training audio files for category:{category}")
             except NameError:
-                # in case {i} doesn't exist
                 pass
         
-        # test data
         for i, file in enumerate(glob.glob(f"data/test-custom/*_{category}.wav")):
             test_target["path"].append(file)
             test_target["emotion"].append(category)
@@ -107,7 +102,6 @@ def write_custom_csv(emotions=['sad', 'neutral', 'happy'], train_name="train_cus
             except NameError:
                 pass
     
-    # write CSVs
     if train_target["path"]:
         pd.DataFrame(train_target).to_csv(train_name)
 

@@ -54,9 +54,6 @@ class AudioExtractor:
         for desc_file in desc_files:
             df = pd.concat((df, pd.read_csv(desc_file)), sort=False)
         
-        if self.verbose:
-            print("[*] Loading audio file paths and its corresponding labels...")
-        
         audio_paths, emotions = list(df['path']), list(df['emotion'])
         
         if not os.path.isdir(self.features_folder_name):
@@ -81,11 +78,11 @@ class AudioExtractor:
                 feature = extract_feature(audio_file, **self.audio_config)
                 if self.input_dimension is None:
                     self.input_dimension = feature.shape[0]
+                print("*"*50, self.input_dimension)
                 append(feature)
-            # convert to numpy array
             features = np.array(features)
-            # save it
             np.save(name, features)
+
         if partition == "train":
             try:
                 self.train_audio_paths
@@ -207,3 +204,4 @@ def load_data(train_desc_files, test_desc_files, audio_config=None, shuffle=True
         "test_audio_paths": audiogen.test_audio_paths,
         "balance": audiogen.balance,
     }
+
