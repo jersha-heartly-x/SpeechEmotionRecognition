@@ -17,8 +17,7 @@ for model, params in classification_grid_parameters.items():
     d.load_data()
     best_estimator, best_params, cv_best_score = d.grid_search(params=params, n_jobs=n_jobs)
     best_estimators.append((best_estimator, best_params, cv_best_score))
-    print(f"{emotions} {best_estimator.__class__.__name__} achieved {cv_best_score:.3f} cross validation accuracy score!")
+    print(f"{emotions} {best_estimator.__class__.__name__} achieved {cv_best_score:.3f} cross validation ROC_AUC score!")
 
 print(f"[+] Pickling best classifiers for {emotions}...")
 pickle.dump(best_estimators, open(f"grid/best_classifiers.pickle", "wb"))
-

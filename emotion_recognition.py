@@ -6,8 +6,7 @@ from data_extractor import load_data
 from sklearn.model_selection import GridSearchCV
 from utils import extract_feature, get_best_estimators, AVAILABLE_EMOTIONS
 from create_csv import write_emodb_csv, write_tess_ravdess_csv, write_custom_csv
-from sklearn.metrics import accuracy_score, make_scorer
-
+from sklearn.metrics import accuracy_score, f1_score, make_scorer, roc_auc_score
 
 class EmotionRecognizer:
     def __init__(self, model=None, **kwargs):
@@ -96,12 +95,14 @@ class EmotionRecognizer:
                     print("[+] Generated Custom DB CSV File")
 
     def grid_search(self, params, n_jobs=2, verbose=1):
-        score = accuracy_score
+        # scoring = {"Accuracy": make_scorer(accuracy_score), "F-measure": 'f1_micro', "AUC": make_scorer(roc_auc_score, greater_is_better=True, needs_threshold=True, multi_class='ovr')}
+
+        scoring = {"Accuracy": make_scorer(accuracy_score), "F-measure": 'f1_micro', "AUC": 'roc_auc_ovr'}
         
         print("Grid Search starts!")
         # GridSearchCV - Exhaustive search over specified parameter values for an estimator.
-        grid = GridSearchCV(estimator=self.model, param_grid=params, scoring=make_scorer(score),
-                            n_jobs=n_jobs, verbose=verbose, cv=3)
+        grid = GridSearchCV(estimator=self.model, param_grid=params, scoring=scoring,
+                            n_jobs=n_jobs, verbose=verbose, cv=3, refit="AUC")
         grid_result = grid.fit(self.X_train, self.y_train)
         print("Grid Search over!")
         return grid_result.best_estimator_, grid_result.best_params_, grid_result.best_score_
@@ -166,5 +167,10 @@ class EmotionRecognizer:
         y_pred = self.model.predict(self.X_test)
         return accuracy_score(y_true=self.y_test, y_pred=y_pred)
 
-
-    
+    def predict_proba(self, audio_path):
+        feature = extract_feature(audio_path, **self.audio_config).reshape(1, -1)
+        proba = self.model.predict_proba(feature)[0]
+        result = {}
+        for emotion, prob in zip(self.model.classes_, proba):
+            result[emotion] = prob
+        return result

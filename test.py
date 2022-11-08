@@ -110,9 +110,8 @@ def record_to_file(path, noise = False):
 
         for i in range(5):
             data = np.array(data)
-            output_file_path = "gnoise.wav"
             augmented_samples = augmenter(samples=data, sample_rate=RATE)
-            wavfile.write(output_file_path, rate=RATE, data=augmented_samples)
+            wavfile.write(path, rate=RATE, data=augmented_samples)
 
     else:
         data = pack('<' + ('h'*len(data)), *data)
@@ -124,29 +123,37 @@ def record_to_file(path, noise = False):
         wf.close()
 
 if __name__ == "__main__":
+    
     estimators = get_best_estimators()
-    estimators_str, estimator_dict = get_estimators_name(estimators)
+    # estimators_str, estimator_dict = get_estimators_name(estimators)
     
     features = ["mfcc", "chroma", "mel"]
 
     detector = EmotionRecognizer(None, emotions=["sad", "neutral", "happy"], features=features, verbose=0)
     detector.train()
-    print("Test accuracy score: {:.3f}%".format(detector.test_score()*100))
+    print("Test ROC_AUC score: {:.5f}".format(detector.test_score()))
     
-    print("Please talk...")
+    # print("Please talk...")
     
     # filename1 = "test.wav"
-    
     # record_to_file(filename1)
     # result = detector.predict(filename1)
     # print("*** PREDICTION ***")
     # print("You are", result)
     # print('*'*18)
     
-    filename2 = "gnoise.wav"
-    record_to_file(filename2, noise = True)
-    result = detector.predict(filename2)
+    # filename2 = "gnoise.wav"
+    # record_to_file(filename2, noise = True)
+    # result = detector.predict()
+    # print("*** PREDICTION ***")
+    # print("You are", result)
+    # print('*'*18)
+
+    result = detector.predict('mac.wav')
     print("*** PREDICTION ***")
     print("You are", result)
     print('*'*18)
 
+    # mac - happy
+    # sad - sad
+    # gnoise - gaussian noise added
